@@ -8,7 +8,7 @@
 # those terms.
 
 import
-  parseopt, strutils, macros, os, times,
+  parseopt, strutils, macros, os, times, json,
   chronos, eth/[keys, common, p2p, net/nat], chronicles, nimcrypto/hash,
   eth/p2p/bootnodes, eth/p2p/rlpx_protocols/whisper_protocol,
   ./db/select_backend,
@@ -138,6 +138,7 @@ type
     ## Main Nimbus configuration object
     dataDir*: string
     keyFile*: string
+    genesisBlock*: JsonNode
     prune*: PruneMode
     rpc*: RpcConfiguration        ## JSON-RPC configuration
     net*: NetConfiguration        ## Network configuration
@@ -154,6 +155,20 @@ var nimbusConfig {.threadvar.}: NimbusConfiguration
 
 proc getConfiguration*(): NimbusConfiguration {.gcsafe.}
 
+proc privateChainConfig*(): ChainConfig =
+  let config = getConfiguration().genesisBlock
+  result = ChainConfig(
+    chainId:          config["config"]["chainID"].getInt().uint,
+    homesteadBlock:   config["config"]["homesteadBlock"].getInt().toBlockNumber,
+    eip150Block:      config["config"]["eip150Block"].getInt().toBlockNumber,
+    eip150Hash:       toDigest("41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d"),
+    eip155Block:      config["config"]["eip155Block"].getInt().toBlockNumber,
+    eip158Block:      config["config"]["eip158Block"].getInt().toBlockNumber,
+    daoForkSupport:   true,
+    byzantiumBlock:   1700000.toBlockNumber
+  )
+  trace "Custom genesis block configuration loaded", configuration=result
+  
 proc publicChainConfig*(id: PublicNetwork): ChainConfig =
   result = case id
   of MainNet:
@@ -190,6 +205,8 @@ proc publicChainConfig*(id: PublicNetwork): ChainConfig =
       eip158Block:    3.toBlockNumber,
       byzantiumBlock: 1035301.toBlockNumber
     )
+  of CustomNet:
+    privateChainConfig()
   else:
     error "No chain config for public network", networkId = id
     doAssert(false, "No chain config for " & $id)
@@ -436,6 +453,23 @@ proc processNetArguments(key, value: string): ConfigStatus =
     config.net.setNetwork(RinkebyNet)
   elif skey == "kovan":
     config.net.setNetwork(KovanNet)
+  elif skey == "customnetwork":
+    if value == "":
+      error "No genesis block config provided for custom network", network=key
+      result = ErrorParseOption
+    else:
+      try:
+        config.genesisBlock = parseFile(value)
+        config.net.networkId = uint(config.genesisBlock["config"]["chainID"].getInt())
+      except IOError:
+        error "Genesis block config file not found", invalidFileName=value
+        result = ErrorParseOption
+      except JsonParsingError:
+        error "Invalid genesis block config file format", invalidFileName=value
+        result = ErrorIncorrectOption
+      except:
+        error "Unknown error in genesis block config file", invalidFileName=value
+        result = Error
   elif skey == "networkid":
     var res = 0
     result = processInteger(value, res)
@@ -678,6 +712,7 @@ NETWORKING OPTIONS:
   --rinkeby               Use Ethereum Rinkeby Test Network
   --ident:<value>         Client identifier (default is '$1')
   --protocols:<value>     Enable specific set of protocols (default: $4)
+  --customNetwork         Use custom Ethereum Network (expects a json file to be passed as value)
 
 WHISPER OPTIONS:
   --shh-maxsize:<value>   Max message size accepted (default: $5)

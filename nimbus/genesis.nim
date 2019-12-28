@@ -1,5 +1,5 @@
 import
-  tables,
+  tables, json, strutils,
   eth/[common, rlp, trie], stint, stew/[byteutils, ranges],
   chronicles, eth/trie/db,
   db/[db_chain, state_db], genesis_alloc, config, constants
@@ -32,6 +32,12 @@ func decodePrealloc(data: seq[byte]): GenesisAlloc =
   for tup in rlp.decode(data.toRange, seq[(UInt256, UInt256)]):
     result[toAddress(tup[0])] = GenesisAccount(balance: tup[1])
 
+func customNetPrealloc(genesisBlock: JsonNode): GenesisAlloc = 
+  result = newTable[EthAddress, GenesisAccount]()
+  for address, balance in genesisBlock["alloc"].pairs():
+    var balance = balance["balance"].getStr()
+    result[parseAddress(address)] = GenesisAccount(balance: cast[UInt256](balance))
+
 proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
   result = case id
   of MainNet:
@@ -58,12 +64,39 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
       difficulty: 1048576.u256,
       alloc: decodePrealloc(rinkebyAllocData)
     )
+  of CustomNet:
+    let genesis = getConfiguration().genesisBlock
+    var nonce = 66.toBlockNonce
+    if genesis.hasKey("nonce"):
+      nonce = (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce
+    var extraData = hexToSeqByte("")
+    if genesis.hasKey("extraData"):
+      extraData = hexToSeqByte(genesis["extraData"].getStr())
+    var gasLimit = 16777216
+    if genesis.hasKey("gasLimit"):
+      gasLimit = parseHexInt(genesis["gasLimit"].getStr())
+    var difficulty = 1048576.u256
+    if genesis.hasKey("difficulty"):
+      difficulty = parseHexInt(genesis["difficulty"].getStr()).u256
+    var alloc = new GenesisAlloc
+    if genesis.hasKey("alloc"):
+      alloc = customNetPrealloc(genesis)
+    Genesis(
+      nonce: nonce,
+      extraData: extraData,
+      gasLimit: gasLimit,
+      difficulty: difficulty,
+      alloc: alloc
+    )
   else:
     # TODO: Fill out the rest
     error "No default genesis for network", id
     doAssert(false, "No default genesis for " & $id)
     Genesis()
-  result.config = publicChainConfig(id)
+  if id == CustomNet:
+    result.config = privateChainConfig()
+  else:
+    result.config = publicChainConfig(id)
 
 proc toBlock*(g: Genesis, db: BaseChainDB = nil): BlockHeader =
   let (tdb, pruneTrie) = if db.isNil: (newMemoryDB(), true)
@@ -108,7 +141,7 @@ proc commit*(g: Genesis, db: BaseChainDB) =
 proc initializeEmptyDb*(db: BaseChainDB) =
   trace "Writing genesis to DB"
   let networkId = getConfiguration().net.networkId.toPublicNetwork()
-  if networkId == CustomNet:
-    raise newException(Exception, "Custom genesis not implemented")
-  else:
-    defaultGenesisBlockForNetwork(networkId).commit(db)
+#  if networkId == CustomNet:
+#    raise newException(Exception, "Custom genesis not implemented")
+#  else:
+  defaultGenesisBlockForNetwork(networkId).commit(db)
