@@ -145,7 +145,7 @@ proc start() =
         nimbus.state = Stopping
       result = "EXITING"
     nimbus.rpcServer.start()
-
+ 
   # metrics server
   when defined(insecure):
     if conf.net.metricsServer:
