@@ -1,5 +1,5 @@
 import
-  tables, json,
+  tables, json, strutils,
   eth/[common, rlp, trie], stint, stew/[byteutils, ranges],
   chronicles, eth/trie/db,
   db/[db_chain, state_db], genesis_alloc, config, constants
@@ -67,10 +67,10 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
     )
   of CustomNet:
     Genesis(
-      nonce: 66.toBlockNonce,
-      extraData: hexToSeqByte("0x3535353535353535353535353535353535353535353535353535353535353535"),
-      gasLimit: 16777216,
-      difficulty: 1048576.u256,
+      nonce: 00.toBlockNonce,
+      extraData: hexToSeqByte(""),
+      gasLimit: parseHexInt("0xffffffff"),
+      difficulty: parseHexInt("0x0400").u256,
       alloc: customNetPrealloc(parseFile("genesis.json"))
     )
   else:
