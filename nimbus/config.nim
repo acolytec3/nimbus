@@ -165,9 +165,9 @@ proc privateChainConfig*(config: JsonNode): ChainConfig =
     daoForkSupport:   true,
     byzantiumBlock:   1700000.toBlockNumber
   )
+  trace "Custom genesis block configuration loaded", configuration=result
   
 proc publicChainConfig*(id: PublicNetwork): ChainConfig =
-  echo "In publicChainConfig, Network ID is ", id
   result = case id
   of MainNet:
     ChainConfig(
