@@ -32,8 +32,14 @@ func decodePrealloc(data: seq[byte]): GenesisAlloc =
   for tup in rlp.decode(data.toRange, seq[(UInt256, UInt256)]):
     result[toAddress(tup[0])] = GenesisAccount(balance: tup[1])
 
+func customNetPrealloc(genesisBlock: JsonNode): GenesisAlloc = 
+  result = newTable[EthAddress, GenesisAccount]()
+  for address, balance in genesisBlock["alloc"].pairs():
+    var balance = balance["balance"].getStr()
+    result[parseAddress(address)] = GenesisAccount(balance: cast[UInt256](balance))
+
+
 proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
-  echo "In defaultGenesisBlock, Public Network ID is ", id
   result = case id
   of MainNet:
     Genesis(
@@ -60,13 +66,12 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
       alloc: decodePrealloc(rinkebyAllocData)
     )
   of CustomNet:
-    echo "Setting custom network genesis block"
     Genesis(
       nonce: 66.toBlockNonce,
       extraData: hexToSeqByte("0x3535353535353535353535353535353535353535353535353535353535353535"),
       gasLimit: 16777216,
       difficulty: 1048576.u256,
-      alloc: decodePrealloc(rinkebyAllocData)
+      alloc: customNetPrealloc(parseFile("genesis.json"))
     )
   else:
     # TODO: Fill out the rest
