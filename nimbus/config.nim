@@ -138,6 +138,7 @@ type
     ## Main Nimbus configuration object
     dataDir*: string
     keyFile*: string
+    genesisBlock*: JsonNode
     prune*: PruneMode
     rpc*: RpcConfiguration        ## JSON-RPC configuration
     net*: NetConfiguration        ## Network configuration
@@ -154,7 +155,8 @@ var nimbusConfig {.threadvar.}: NimbusConfiguration
 
 proc getConfiguration*(): NimbusConfiguration {.gcsafe.}
 
-proc privateChainConfig*(config: JsonNode): ChainConfig =
+proc privateChainConfig*(): ChainConfig =
+  let config = getConfiguration().genesisBlock
   result = ChainConfig(
     chainId:          config["config"]["chainID"].getInt().uint,
     homesteadBlock:   config["config"]["homesteadBlock"].getInt().toBlockNumber,
@@ -204,7 +206,7 @@ proc publicChainConfig*(id: PublicNetwork): ChainConfig =
       byzantiumBlock: 1035301.toBlockNumber
     )
   of CustomNet:
-    privateChainConfig(parseFile("genesis.json"))
+    privateChainConfig()
   else:
     error "No chain config for public network", networkId = id
     doAssert(false, "No chain config for " & $id)
@@ -452,7 +454,8 @@ proc processNetArguments(key, value: string): ConfigStatus =
   elif skey == "kovan":
     config.net.setNetwork(KovanNet)
   elif skey == "customnetwork":
-    config.net.setNetwork(CustomNet)  
+    config.net.setNetwork(CustomNet) 
+    config.genesisBlock = parseFile(value)
   elif skey == "networkid":
     var res = 0
     result = processInteger(value, res)
