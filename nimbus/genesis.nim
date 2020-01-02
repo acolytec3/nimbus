@@ -38,7 +38,6 @@ func customNetPrealloc(genesisBlock: JsonNode): GenesisAlloc =
     var balance = balance["balance"].getStr()
     result[parseAddress(address)] = GenesisAccount(balance: cast[UInt256](balance))
 
-
 proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
   result = case id
   of MainNet:
@@ -66,12 +65,13 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
       alloc: decodePrealloc(rinkebyAllocData)
     )
   of CustomNet:
+    var genesis = parseFile("genesis.json")
     Genesis(
-      nonce: 00.toBlockNonce,
-      extraData: hexToSeqByte(""),
-      gasLimit: parseHexInt("0xffffffff"),
-      difficulty: parseHexInt("0x0400").u256,
-      alloc: customNetPrealloc(parseFile("genesis.json"))
+      nonce: (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce,
+      extraData: hexToSeqByte(genesis["extraData"].getStr()),
+      gasLimit: parseHexInt(genesis["gasLimit"].getStr()),
+      difficulty: parseHexInt(genesis["difficulty"].getStr()).u256,
+      alloc: customNetPrealloc(genesis)
     )
   else:
     # TODO: Fill out the rest
@@ -79,7 +79,7 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
     doAssert(false, "No default genesis for " & $id)
     Genesis()
   if id == CustomNet:
-    result.config = privateChainConfig(parseFile("genesis.json"))
+    result.config = privateChainConfig()
   else:
     result.config = publicChainConfig(id)
 
