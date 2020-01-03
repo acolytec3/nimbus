@@ -66,12 +66,27 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
     )
   of CustomNet:
     let genesis = getConfiguration().genesisBlock
+    var nonce = 66.toBlockNonce
+    if genesis.hasKey("nonce"):
+      nonce = (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce
+    var extraData = hexToSeqByte("")
+    if genesis.hasKey("extraData"):
+      extraData = hexToSeqByte(genesis["extraData"].getStr())
+    var gasLimit = 16777216
+    if genesis.hasKey("gasLimit"):
+      gasLimit = parseHexInt(genesis["gasLimit"].getStr())
+    var difficulty = 1048576.u256
+    if genesis.hasKey("difficulty"):
+      difficulty = parseHexInt(genesis["difficulty"].getStr()).u256
+    var alloc = new GenesisAlloc
+    if genesis.hasKey("alloc"):
+      alloc = customNetPrealloc(genesis)
     Genesis(
-      nonce: (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce,
-      extraData: hexToSeqByte(genesis["extraData"].getStr()),
-      gasLimit: parseHexInt(genesis["gasLimit"].getStr()),
-      difficulty: parseHexInt(genesis["difficulty"].getStr()).u256,
-      alloc: customNetPrealloc(genesis)
+      nonce: nonce,
+      extraData: extraData,
+      gasLimit: gasLimit,
+      difficulty: difficulty,
+      alloc: alloc
     )
   else:
     # TODO: Fill out the rest
