@@ -453,8 +453,21 @@ proc processNetArguments(key, value: string): ConfigStatus =
     config.net.setNetwork(RinkebyNet)
   elif skey == "kovan":
     config.net.setNetwork(KovanNet)
-  elif skey == "customnetwork": 
-    config.genesisBlock = parseFile(value)
+  elif skey == "customnetwork":
+    if value == "":
+      error "No genesis block config provided for custom network", network=key
+      raise newException(Exception, "No genesis block configuration provided")
+    try:
+      config.genesisBlock = parseFile(value)
+    except IOError:
+      error "Genesis block config file not found", invalidFileName=value
+      raise newException(Exception, "Genesis block config file not found")
+    except JsonParsingError:
+      error "Invalid genesis block config file format", invalidFileName=value
+      raise newException(Exception, "Invalid genesis block config file format")
+    except:
+      error "Unknown error in genesis block config file", invalidFileName=value
+      raise newException(Exception, "Unknown error in genesis block configuration file")
     config.net.networkId = uint(config.genesisBlock["config"]["chainID"].getInt())
   elif skey == "networkid":
     var res = 0
