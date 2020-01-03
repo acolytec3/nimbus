@@ -453,9 +453,9 @@ proc processNetArguments(key, value: string): ConfigStatus =
     config.net.setNetwork(RinkebyNet)
   elif skey == "kovan":
     config.net.setNetwork(KovanNet)
-  elif skey == "customnetwork":
-    config.net.setNetwork(CustomNet) 
+  elif skey == "customnetwork": 
     config.genesisBlock = parseFile(value)
+    config.net.networkId = uint(config.genesisBlock["config"]["chainID"].getInt())
   elif skey == "networkid":
     var res = 0
     result = processInteger(value, res)

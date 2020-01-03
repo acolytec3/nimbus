@@ -65,7 +65,7 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
       alloc: decodePrealloc(rinkebyAllocData)
     )
   of CustomNet:
-    var genesis = parseFile("genesis.json")
+    let genesis = getConfiguration().genesisBlock
     Genesis(
       nonce: (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce,
       extraData: hexToSeqByte(genesis["extraData"].getStr()),
