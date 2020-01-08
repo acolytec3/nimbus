@@ -65,29 +65,18 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
       alloc: decodePrealloc(rinkebyAllocData)
     )
   of CustomNet:
-    let genesis = getConfiguration().genesisBlock
-    var nonce = 66.toBlockNonce
-    if genesis.hasKey("nonce"):
-      nonce = (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce
-    var extraData = hexToSeqByte("")
-    if genesis.hasKey("extraData"):
-      extraData = hexToSeqByte(genesis["extraData"].getStr())
-    var gasLimit = 16777216
-    if genesis.hasKey("gasLimit"):
-      gasLimit = parseHexInt(genesis["gasLimit"].getStr())
-    var difficulty = 1048576.u256
-    if genesis.hasKey("difficulty"):
-      difficulty = parseHexInt(genesis["difficulty"].getStr()).u256
+    let genesis = getConfiguration().customGenesis
     var alloc = new GenesisAlloc
-    if genesis.hasKey("alloc"):
-      alloc = customNetPrealloc(genesis)
+    if genesis.alloc != "":
+      alloc = customNetPrealloc(genesis.alloc)
     Genesis(
-      nonce: nonce,
-      extraData: extraData,
-      gasLimit: gasLimit,
-      difficulty: difficulty,
-      alloc: alloc
+      nonce = genesis.nonce
+      extraData = genesis.extraData
+      gasLimit = genesis.gasLimit
+      difficulty = genesis.difficulty
+      alloc = alloc
     )
+
   else:
     # TODO: Fill out the rest
     error "No default genesis for network", id
