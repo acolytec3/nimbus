@@ -67,14 +67,14 @@ proc defaultGenesisBlockForNetwork*(id: PublicNetwork): Genesis =
   of CustomNet:
     let genesis = getConfiguration().customGenesis
     var alloc = new GenesisAlloc
-    if genesis.alloc != "":
-      alloc = customNetPrealloc(genesis.alloc)
+    if genesis.prealloc != parseJson("{}"):
+      alloc = customNetPrealloc(genesis.prealloc)
     Genesis(
-      nonce = genesis.nonce
-      extraData = genesis.extraData
-      gasLimit = genesis.gasLimit
-      difficulty = genesis.difficulty
-      alloc = alloc
+      nonce: genesis.nonce,
+      extraData: genesis.extraData,
+      gasLimit: genesis.gasLimit,
+      difficulty: genesis.difficulty,
+      alloc: alloc
     )
 
   else:

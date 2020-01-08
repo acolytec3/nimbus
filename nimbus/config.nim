@@ -156,11 +156,11 @@ type
     eip158Block*: BlockNumber
     byzantiumBlock*: BlockNumber
     constantinopleBlock*: BlockNumber
-    nonce: uint64
-    extraData: string
-    gasLimit: uint64
-    difficulty: uint64
-    prealloc: JsonNode
+    nonce*: BlockNonce
+    extraData*: seq[byte]
+    gasLimit*: int64
+    difficulty*: UInt256
+    prealloc*: JsonNode
 
 const
   defaultRpcApi = {RpcFlags.Eth, RpcFlags.Shh}
@@ -232,97 +232,99 @@ proc publicChainConfig*(id: PublicNetwork): ChainConfig =
 
   result.chainId = uint(id)
 
-  proc processCustomGenesisConfig(customGenesis: JsonNode): ConfigStatus =
-    ## Parses Custom Genesis Block config options when customnetwork option provided
-    let config = getConfiguration() 
-    result = Success
-    var chainId = 0.uint
-    var homesteadBlock = 0.toBlockNumber
-    var eip150Block = 0.toBlockNumber
-    var eip150Hash = toDigest("9b095b36c15eaf13044373aef8ee0bd3a382a5abb92e402afa44b8249c3a90e9")
-    var eip155Block = 0.toBlockNumber
-    var eip158Block = 0.toBlockNumber
-    var daoForkSupport = true
-    var byzantiumBlock = 1700000.toBlockNumber
-    var constantinopleBlock = 1700001.toBlockNumber
-    var nonce = 66.toBlockNonce
-    var extraData = hexToSeqByte("0x3535353535353535353535353535353535353535353535353535353535353535")
-    var gasLimit = 16777216
-    var difficulty = 1048576.u256
-    var alloc = new JsonNode
-    try:
-      chainId = customGenesis["config"]["chainID"].getInt().uint
-    except:
-      result = ErrorParseOption
-    try:
-      homesteadBlock = customGenesis["config"]["homesteadBlock"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption  
-    try:
-      eip150Block = customGenesis["config"]["eip150Block"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption
-    try:
-      eip150Hash = toDigest(customGenesis["config"]["eip150Hash"].getStr())
-    except:
-      result = ErrorParseOption
-    try:
-      eip155Block = customGenesis["config"]["eip155Block"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption
-    try:
-      eip158Block = custommGenesis["config"]["eip158Block"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption
-    try:
-      daoForkSupport = parseBool(customGenesis["config"]["daoForkSupport"])
-    except:
-      result = ErrorParseOption
-    try:
-      byzantiumBlock = customGenesis["config"]["byzantiumBlock"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption
-    try:
-      constantinopleBlock = customGenesis["config"]["byzantiumBlock"].getInt().toBlockNumber
-    except:
-      result = ErrorParseOption
-    try:
-      nonce = (parseHexInt(genesis["nonce"].getStr()).uint64).toBlockNonce
-    except:
-      result = ErrorParseOption
-    try:
-      extraData = hexToSeqByte(genesis["extraData"].getStr())
-    except: 
-      result = ErrorParseOption
-    try:
-      gasLimit = parseHexInt(genesis["gasLimit"].getStr())
-    except:
-      result = ErrorParseOption
-    try:
-      difficulty = parseHexInt(genesis["difficulty"].getStr()).u256
-    except: 
-      result = ErrorParseOption
-    try:
-      alloc = customGenesis["prealloc"]
-    except:
-      result = ErrorParseOption
+proc processCustomGenesisConfig(customGenesis: JsonNode): ConfigStatus =
+  ## Parses Custom Genesis Block config options when customnetwork option provided
+  let config = getConfiguration() 
+  result = Success
+  var chainId = 0.uint
+  var homesteadBlock = 0.toBlockNumber
+  var eip150Block = 0.toBlockNumber
+  var eip150Hash = toDigest("9b095b36c15eaf13044373aef8ee0bd3a382a5abb92e402afa44b8249c3a90e9")
+  var eip155Block = 0.toBlockNumber
+  var eip158Block = 0.toBlockNumber
+  var daoForkSupport = true
+  var byzantiumBlock = 1700000.toBlockNumber
+  var constantinopleBlock = 1700001.toBlockNumber
+  var nonce = 66.toBlockNonce
+  var extraData = hexToSeqByte("0x3535353535353535353535353535353535353535353535353535353535353535")
+  var gasLimit = 16777216.int64
+  var difficulty = 1048576.u256
+  var alloc = parseJson("{}")
+  try:
+    chainId = customGenesis["config"]["chainID"].getInt().uint
+  except:
+    result = ErrorParseOption
+  try:
+    homesteadBlock = customGenesis["config"]["homesteadBlock"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption  
+  try:
+    eip150Block = customGenesis["config"]["eip150Block"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption
+  try:
+    let value = customGenesis["config"]["eip150Hash"].getStr()
+    eip150Hash = MDigest[256].fromHex(value)
+  except:
+    result = ErrorParseOption
+  try:
+    eip155Block = customGenesis["config"]["eip155Block"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption
+  try:
+    eip158Block = customGenesis["config"]["eip158Block"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption
+  try:
+    daoForkSupport = customGenesis["config"]["daoForkSupport"].getBool()
+  except:
+    result = ErrorParseOption
+  try:
+    byzantiumBlock = customGenesis["config"]["byzantiumBlock"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption
+  try:
+    constantinopleBlock = customGenesis["config"]["byzantiumBlock"].getInt().toBlockNumber
+  except:
+    result = ErrorParseOption
+  try:
+    nonce = (parseHexInt(customGenesis["nonce"].getStr()).uint64).toBlockNonce
+  except:
+    result = ErrorParseOption
+  try:
+    extraData = hexToSeqByte(customGenesis["extraData"].getStr())
+  except: 
+    result = ErrorParseOption
+  try:
+    gasLimit = fromHex[int64](customGenesis["gasLimit"].getStr())
+  except:
+    result = ErrorParseOption
+  try:
+    difficulty = parseHexInt(customGenesis["difficulty"].getStr()).u256
+  except: 
+    result = ErrorParseOption
+  try:
+    alloc = customGenesis["prealloc"]
+  except:
+    result = ErrorParseOption
   
-    config.customGenesis = new CustomGenesisConfig (
-      chainId:          chainId,
-      homesteadBlock:   homesteadBlock,
-      eip150Block:      eip150Block,
-      eip150Hash:       eip150Hash,
-      eip155Block:      eip155Block,
-      eip158Block:      eip158Block,
-      daoForkSupport:   daoForkSupport,
-      byzantiumBlock:   byzantiumBlock,
-      constantinopleBlock: constantinopleBlock,
-      nonce = nonce,
-      extraData = extraData,
-      gasLimit = gasLimit,
-      difficulty = difficulty,
-      alloc = alloc
-    )
+  var cg = CustomGenesisConfig(
+    chainId:          chainId,
+    homesteadBlock:   homesteadBlock,
+    eip150Block:      eip150Block,
+    eip150Hash:       eip150Hash,
+    eip155Block:      eip155Block,
+    eip158Block:      eip158Block,
+    daoForkSupport:   daoForkSupport,
+    byzantiumBlock:   byzantiumBlock,
+    constantinopleBlock: constantinopleBlock,
+    nonce: nonce,
+    extraData: extraData,
+    gasLimit: gasLimit,
+    difficulty: difficulty,
+    prealloc: alloc
+  )
+  config.customGenesis = cg
   
 proc processList(v: string, o: var seq[string]) =
   ## Process comma-separated list of strings.
@@ -569,7 +571,7 @@ proc processNetArguments(key, value: string): ConfigStatus =
       result = ErrorParseOption
     else:
       try:
-        config.customGenesis.processCustomGenesisConfig(parseFile(value))
+        result = processCustomGenesisConfig(parseFile(value))
         config.net.networkId = uint(config.customGenesis.chainId)
       except IOError:
         error "Genesis block config file not found", invalidFileName=value
